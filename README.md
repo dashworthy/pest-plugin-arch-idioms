@@ -24,37 +24,126 @@ composer require --dev dashworthy/pest-plugin-arch-idioms
 
 ## Usage
 
-A single class:
+Each verb is an ordinary arch expectation, so it chains onto an `expect(...)`
+you already write — one class, or a whole layer with `->classes()`.
+
+### Queued notifications that declare their channels
 
 ```php
-arch('the welcome job is queued')
-    ->expect(SomeJob::class)
-    ->toBeQueued();
+namespace App\Domains\Billing\Notifications;
+
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
+
+final class InvoicePaid extends Notification implements ShouldQueue
+{
+    use Queueable;
+
+    /** @return array<int, string> */
+    public function via(object $notifiable): array
+    {
+        return ['mail', 'database'];
+    }
+
+    public function toMail(object $notifiable): MailMessage
+    {
+        return (new MailMessage)->markdown('mail.billing.invoice-paid');
+    }
+}
 ```
 
-A whole namespace:
-
 ```php
-arch('notifications are queued')
-    ->expect('App\Domains')
-    ->classes()
-    ->toBeQueued();
-```
-
-Combined with `->ignoring(...)` to carve out an exception:
-
-```php
-arch('notifications are queued')
-    ->expect('App\Domains')
+arch('billing notifications are queued and declare their channels')
+    ->expect('App\Domains\Billing\Notifications')
     ->classes()
     ->toBeQueued()
-    ->ignoring('App\Domains\Shared\Notifications\PasswordReset');
+    ->toDeclareNotificationChannels();
 ```
 
-Prefer `toBeSync()` over `->ignoring(...)` when a class is deliberately
-synchronous: an exclusion only records that something was skipped, not what it
-was opted into, so the next reader has to go find the class and work out why.
-`toBeSync()` asserts the decision in place.
+`InvoicePaid implements ShouldQueue`, so `toBeQueued()` passes; its `via()`
+returns a non-empty list, so `toDeclareNotificationChannels()` passes. Drop the
+`implements ShouldQueue` and the first verb fails; return `[]` from `via()` and
+the second does.
+
+### Mailables rendered from markdown
+
+```php
+namespace App\Domains\Onboarding\Mail;
+
+use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Content;
+
+final class WelcomeEmail extends Mailable
+{
+    public function content(): Content
+    {
+        return new Content(markdown: 'mail.onboarding.welcome');
+    }
+}
+```
+
+```php
+arch('onboarding mailables use markdown templates')
+    ->expect('App\Domains\Onboarding\Mail')
+    ->classes()
+    ->toUseMarkdownMailTemplates();
+```
+
+The verb only recognises the named-argument form `new Content(markdown: '...')`.
+A positional `new Content('mail.welcome')` is reported as a violation even when
+it points at a markdown template.
+
+### Models that guard mass assignment and match their table
+
+```php
+namespace App\Domains\Billing\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+final class Invoice extends Model
+{
+    /** @var list<string> */
+    protected $fillable = ['team_id', 'amount_cents', 'status'];
+}
+```
+
+```php
+arch('billing models are safe and conventional')
+    ->expect('App\Domains\Billing\Models')
+    ->classes()
+    ->toGuardMassAssignment()
+    ->toMatchTableName();
+```
+
+`Invoice` declares `$fillable`, so mass assignment is guarded; its class name
+resolves the table `invoices`, which is what `getTable()` returns, so the table
+name matches.
+
+### Asserting a deliberate decision instead of ignoring it
+
+A class caught by a layer selector that is *meant* to break the rule can be
+carved out with `->ignoring(...)`:
+
+```php
+arch('billing notifications are queued')
+    ->expect('App\Domains\Billing\Notifications')
+    ->classes()
+    ->toBeQueued()
+    ->ignoring(App\Domains\Billing\Notifications\PaymentDeclined::class);
+```
+
+But an exclusion only records that `PaymentDeclined` was skipped, not what it was
+opted into. When a class is deliberately synchronous, assert that in place with
+`toBeSync()` instead — the next reader sees the decision without hunting for the
+class:
+
+```php
+arch('the payment-declined alert is sent synchronously')
+    ->expect(App\Domains\Billing\Notifications\PaymentDeclined::class)
+    ->toBeSync();
+```
 
 ## What you are accepting
 
