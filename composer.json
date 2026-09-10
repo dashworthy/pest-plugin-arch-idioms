@@ -1,0 +1,71 @@
+{
+    "name": "dashworthy/pest-plugin-arch-idioms",
+    "description": "Framework-idiom architecture expectations for Pest.",
+    "keywords": [
+        "php",
+        "pest",
+        "testing",
+        "plugin",
+        "architecture",
+        "dashworthy"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Andrew Leach",
+            "email": "andrew@leachcreative.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.4",
+        "illuminate/contracts": "^13.0",
+        "illuminate/database": "^13.0",
+        "illuminate/support": "^13.0",
+        "nikic/php-parser": "^5.0",
+        "pestphp/pest": "^4.0",
+        "pestphp/pest-plugin": "^4.0",
+        "pestphp/pest-plugin-arch": "^4.0"
+    },
+    "require-dev": {
+        "illuminate/mail": "^13.0",
+        "illuminate/notifications": "^13.0",
+        "pestphp/pest-dev-tools": "^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Dashworthy\\PestPluginArchIdioms\\": "src/"
+        },
+        "files": [
+            "src/Autoload.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Dashworthy\\PestPluginArchIdioms\\Tests\\": "tests/"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true,
+        "preferred-install": "dist",
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "scripts": {
+        "refacto": "rector",
+        "lint": "pint",
+        "test:refacto": "rector --dry-run",
+        "test:lint": "pint --test",
+        "test:types": "phpstan analyse --ansi",
+        "test:unit": "pest --colors=always",
+        "test": [
+            "@test:refacto",
+            "@test:lint",
+            "@test:types",
+            "@test:unit"
+        ]
+    }
+}
