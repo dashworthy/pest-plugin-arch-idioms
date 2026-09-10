@@ -24,114 +24,72 @@ composer require --dev dashworthy/pest-plugin-arch-idioms
 
 ## Usage
 
-Each verb is an ordinary arch expectation, so it chains onto an `expect(...)`
-you already write — one class, or a whole layer with `->classes()`.
+Each verb is an ordinary arch expectation. Point a selector at the Laravel base
+class that defines the layer, and the verb checks every class that extends it —
+no fixture classes to write.
 
-### Queued notifications that declare their channels
+### Notifications are queued and declare their channels
 
 ```php
-namespace App\Domains\Billing\Notifications;
-
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-final class InvoicePaid extends Notification implements ShouldQueue
-{
-    use Queueable;
-
-    /** @return array<int, string> */
-    public function via(object $notifiable): array
-    {
-        return ['mail', 'database'];
-    }
-
-    public function toMail(object $notifiable): MailMessage
-    {
-        return (new MailMessage)->markdown('mail.billing.invoice-paid');
-    }
-}
-```
-
-```php
-arch('billing notifications are queued and declare their channels')
-    ->expect('App\Domains\Billing\Notifications')
+arch('every notification is queued and declares its channels')
+    ->expect('App')
     ->classes()
+    ->extending(Notification::class)
     ->toBeQueued()
     ->toDeclareNotificationChannels();
 ```
 
-`InvoicePaid implements ShouldQueue`, so `toBeQueued()` passes; its `via()`
-returns a non-empty list, so `toDeclareNotificationChannels()` passes. Drop the
-`implements ShouldQueue` and the first verb fails; return `[]` from `via()` and
-the second does.
+`toBeQueued()` passes for a notification that implements `ShouldQueue` (or
+`ShouldQueueAfterCommit`, which extends it); `toDeclareNotificationChannels()`
+passes when its `via()` returns a non-empty channel list.
 
-### Mailables rendered from markdown
+### Mailables render from markdown
 
 ```php
-namespace App\Domains\Onboarding\Mail;
-
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
 
-final class WelcomeEmail extends Mailable
-{
-    public function content(): Content
-    {
-        return new Content(markdown: 'mail.onboarding.welcome');
-    }
-}
-```
-
-```php
-arch('onboarding mailables use markdown templates')
-    ->expect('App\Domains\Onboarding\Mail')
+arch('every mailable uses a markdown template')
+    ->expect('App')
     ->classes()
+    ->extending(Mailable::class)
     ->toUseMarkdownMailTemplates();
 ```
 
-The verb only recognises the named-argument form `new Content(markdown: '...')`.
+The verb recognises only the named-argument form `new Content(markdown: '...')`.
 A positional `new Content('mail.welcome')` is reported as a violation even when
 it points at a markdown template.
 
-### Models that guard mass assignment and match their table
+### Models guard mass assignment and match their table
 
 ```php
-namespace App\Domains\Billing\Models;
-
 use Illuminate\Database\Eloquent\Model;
 
-final class Invoice extends Model
-{
-    /** @var list<string> */
-    protected $fillable = ['team_id', 'amount_cents', 'status'];
-}
-```
-
-```php
-arch('billing models are safe and conventional')
-    ->expect('App\Domains\Billing\Models')
+arch('every model is safe and conventional')
+    ->expect('App')
     ->classes()
+    ->extending(Model::class)
     ->toGuardMassAssignment()
     ->toMatchTableName();
 ```
 
-`Invoice` declares `$fillable`, so mass assignment is guarded; its class name
-resolves the table `invoices`, which is what `getTable()` returns, so the table
-name matches.
+`toGuardMassAssignment()` passes for a model that declares `$fillable` or
+`$guarded`, or relies on the fully guarded default; `toMatchTableName()` passes
+when the class name resolves the table Laravel would derive from it.
 
 ### Asserting a deliberate decision instead of ignoring it
 
-A class caught by a layer selector that is *meant* to break the rule can be
-carved out with `->ignoring(...)`:
+A class caught by a selector that is *meant* to break the rule can be carved out
+with `->ignoring(...)`:
 
 ```php
-arch('billing notifications are queued')
-    ->expect('App\Domains\Billing\Notifications')
+arch('notifications are queued')
+    ->expect('App')
     ->classes()
+    ->extending(Notification::class)
     ->toBeQueued()
-    ->ignoring(App\Domains\Billing\Notifications\PaymentDeclined::class);
+    ->ignoring(App\Notifications\PaymentDeclined::class);
 ```
 
 But an exclusion only records that `PaymentDeclined` was skipped, not what it was
@@ -141,7 +99,7 @@ class:
 
 ```php
 arch('the payment-declined alert is sent synchronously')
-    ->expect(App\Domains\Billing\Notifications\PaymentDeclined::class)
+    ->expect(App\Notifications\PaymentDeclined::class)
     ->toBeSync();
 ```
 
