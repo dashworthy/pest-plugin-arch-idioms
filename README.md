@@ -22,6 +22,7 @@ composer require --dev dashworthy/pest-plugin-arch-idioms
 | `toDeclareNotificationChannels()` | `via()` exists and returns a non-empty channel list |
 | `toUseMarkdownMailTemplates()` | `content()` names a markdown template rather than a plain view |
 | `toAuthorizeWithGate($expectedAbility)` | `authorize()` checks `Gate::allows()` with an ability name — the one `$expectedAbility` derives from the class name, when given |
+| `toUseApprovedDirectories($directories, $beneath)` | a class beneath a module sits in one of the module's approved directories, never in a new one or loose in the module, and is the type its directory names |
 | `toMatchGateAbilities($directories, $alsoChecked)` | (on a list of permission names) every permission is checked by some `Gate::allows()`, and every checked ability is a permission |
 
 `toMatchGateAbilities()` is the odd one out: it is an ordinary expectation, not an
@@ -138,6 +139,53 @@ backs (it can never be granted), listing every mismatch at once. Pass abilities
 the source cannot show — names built at runtime, or checked by a package — as
 `$alsoChecked`.
 
+### Modules keep to their approved directories
+
+A modular application repeats the same few directories in every module:
+`Actions`, `Models`, `Controllers` and so on. `toUseApprovedDirectories()`
+holds every module to that list, so a new kind of class is a decision someone
+approves rather than a directory that quietly appears.
+
+```php
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Routing\Controller;
+
+arch('every module keeps to the approved directories')
+    ->expect('App\Domains')
+    ->toUseApprovedDirectories(
+        [
+            'Actions',
+            'Data',
+            'Controllers' => Controller::class,
+            'Enums' => UnitEnum::class,
+            'Models' => Model::class,
+            'Requests' => FormRequest::class,
+            'Resources' => JsonResource::class,
+        ],
+        beneath: 'App\Domains\*\*',
+    );
+```
+
+`$beneath` names the modules: a namespace in which `*` matches any one
+segment, so `App\Domains\*\*` is every module two levels beneath
+`App\Domains`. The verb checks the directory directly beneath each module and
+nothing deeper, so `Actions\Drafts` is fine once `Actions` is approved. A
+class sitting directly in a module fails too, and a class outside the modules
+is left alone.
+
+A directory given as a key names the class or interface everything in it must
+extend or implement, however deeply nested: a `Requests` directory holds form
+requests and nothing else. A directory given as a plain value holds any class.
+Name a type wherever the directory has one, so the name of a directory says
+what is in it.
+
+The failure names the approved directories and asks for approval before a new
+one is created or added to the list, so the list stays a decision. Exempt
+existing exceptions with `->ignoring(...)` rather than approving their
+directory for everyone.
+
 ### Asserting a deliberate decision instead of ignoring it
 
 A class caught by a selector that is *meant* to break the rule can be carved out
@@ -246,6 +294,16 @@ the check. That is the general form of the `#[Fillable]` caveat below.
 - `toMatchGateAbilities()` scans every `.php` file beneath the directories,
   which includes Blade views; it skips any path containing a `vendor`
   directory.
+
+### `toUseApprovedDirectories()`
+
+- It reads the namespace, not the path on disk. Under PSR-4 they agree; a
+  class whose namespace does not match its directory is checked by its
+  namespace.
+- A directory with no PHP class in it, such as one holding only views or
+  JSON, is never seen.
+- A directory names one type. A directory whose classes share no single
+  parent or interface, such as `Actions` or `Data`, is listed without one.
 
 ## Editor and agent support
 
