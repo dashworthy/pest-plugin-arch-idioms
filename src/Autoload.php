@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Dashworthy\PestPluginArchIdioms\GateAbilityInspector;
+use Dashworthy\PestPluginArchIdioms\GateAuthorizationInspector;
 use Dashworthy\PestPluginArchIdioms\Rule;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
@@ -9,12 +11,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Pest\Arch\Contracts\ArchExpectation;
 use Pest\Arch\Support\FileLineFinder;
+use Pest\Expectation;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Expr\Array_;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Stmt\Return_;
 use PhpParser\NodeFinder;
 use PHPUnit\Architecture\Elements\ObjectDescription;
+use PHPUnit\Framework\Assert;
 
 /*
  | Each closure MUST declare ": ArchExpectation" as its return type.
@@ -227,4 +231,46 @@ expect()->extend('toUseMarkdownMailTemplates', function () use ($methodOrClassLi
             : 'Expecting the mailable to render from a markdown template, but content() does not name a markdown template. Pass markdown: to Content instead of view:.',
         $methodOrClassLine('function content'),
     );
+});
+
+/*
+ | The verbs below keep their decisions in inspector classes, which return the
+ | failure message or null. This adapts one to Rule::make's predicate and message
+ | pair: the message the inspector returned is the detail the message reports.
+ */
+$fromInspector = static fn (Expectation $expectation, callable $inspect, ?callable $line = null): ArchExpectation => Rule::make(
+    $expectation,
+    function (ObjectDescription $object, ?string &$detail) use ($inspect): bool {
+        $detail = $inspect($object);
+
+        return $detail === null;
+    },
+    fn ($violation, ?string $detail): string => (string) $detail,
+    $line,
+);
+
+/*
+ | $expectedAbility: Closure(string $requestClass): ?string naming the ability
+ |                   the request should check, or null to accept any.
+ */
+expect()->extend('toAuthorizeWithGate', function (?Closure $expectedAbility = null) use ($fromInspector, $methodOrClassLine): ArchExpectation {
+    return $fromInspector($this, new GateAuthorizationInspector($expectedAbility), $methodOrClassLine('function authorize'));
+});
+
+/*
+ | Not an arch expectation: its subject is the list of permission names, so it
+ | reports every mismatch in one run.
+ |
+ | $directories: where to look for Gate::allows() calls.
+ | $alsoChecked: abilities checked in ways source cannot show.
+ */
+expect()->extend('toMatchGateAbilities', function (array $directories, array $alsoChecked = []): Expectation {
+    $failures = (new GateAbilityInspector($directories, $alsoChecked))((array) $this->value);
+
+    Assert::assertTrue(
+        $failures === [],
+        "Expecting the permissions and the abilities the code checks to match, but:\n".implode("\n", $failures),
+    );
+
+    return $this;
 });
