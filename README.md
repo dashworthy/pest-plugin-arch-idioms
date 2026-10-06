@@ -186,6 +186,67 @@ one is created or added to the list, so the list stays a decision. Exempt
 existing exceptions with `->ignoring(...)` rather than approving their
 directory for everyone.
 
+#### Example
+
+With the rule above, here is how each class in an invoicing module fares:
+
+```text
+app/Domains/Billing/Invoices/
+├── Actions/
+│   ├── IssueInvoice.php            ✓ Actions is approved, for any class
+│   └── Drafts/
+│       └── SaveDraft.php           ✓ anything may nest inside an approved directory
+├── Models/
+│   └── Invoice.php                 ✓ extends Model
+├── Requests/
+│   ├── StoreInvoiceRequest.php     ✓ extends FormRequest
+│   └── InvoiceTotals.php           ✗ Requests holds form requests only
+├── Gizmos/
+│   └── InvoiceGizmo.php            ✗ Gizmos is not an approved directory
+└── InvoiceHelper.php               ✗ sits directly in the module
+```
+
+`InvoiceGizmo` fails like this:
+
+```text
+Expecting the class to sit in an approved directory of App\Domains\Billing\Invoices,
+but 'Gizmos' is not one. Use one of: Actions, Controllers, Data, Enums, Models,
+Requests, Resources. If none fits, ask for approval before creating a new
+directory or adding one to the approved list.
+
+at app/Domains/Billing/Invoices/Gizmos/InvoiceGizmo.php:5
+```
+
+`InvoiceTotals` fails because of the type its directory names:
+
+```text
+Expecting every class in the Requests directory to be a
+Illuminate\Foundation\Http\FormRequest, but this one is not. Extend or implement
+Illuminate\Foundation\Http\FormRequest, or move the class to the approved
+directory for what it is. If none fits, ask for approval before creating a new
+directory or adding one to the approved list.
+
+at app/Domains/Billing/Invoices/Requests/InvoiceTotals.php:5
+```
+
+Each failure has three fixes. If an approved directory fits, move the class
+there: `InvoiceTotals` probably belongs in `Actions` or `Data`. If none fits,
+get the new directory approved first, then add it in the same change that
+first uses it:
+
+```php
+        [
+            'Actions',
+            'Data',
+            'Gizmos', // approved for invoice gizmos: no other directory fits them
+            // ...
+        ],
+```
+
+If the class is a known exception, exempt it by name with
+`->ignoring(InvoiceHelper::class)`, saying why, rather than approving its
+directory for every module.
+
 ### Asserting a deliberate decision instead of ignoring it
 
 A class caught by a selector that is *meant* to break the rule can be carved out
