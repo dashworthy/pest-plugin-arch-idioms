@@ -21,6 +21,12 @@ composer require --dev dashworthy/pest-plugin-arch-idioms
 | `toGuardMassAssignment()` | a model declares `$fillable` or `$guarded`, or relies on the fully guarded default |
 | `toDeclareNotificationChannels()` | `via()` exists and returns a non-empty channel list |
 | `toUseMarkdownMailTemplates()` | `content()` names a markdown template rather than a plain view |
+| `toAuthorizeWithGate($expectedAbility)` | `authorize()` checks `Gate::allows()` with an ability name — the one `$expectedAbility` derives from the class name, when given |
+| `toMatchGateAbilities($directories, $alsoChecked)` | (on a list of permission names) every permission is checked by some `Gate::allows()`, and every checked ability is a permission |
+
+`toMatchGateAbilities()` is the odd one out: it is an ordinary expectation, not an
+arch one. Its subject is the list of permission names rather than a selection of
+classes, so it reports every mismatch in one run.
 
 ## Usage
 
@@ -77,6 +83,60 @@ arch('every model is safe and conventional')
 `toGuardMassAssignment()` passes for a model that declares `$fillable` or
 `$guarded`, or relies on the fully guarded default; `toMatchTableName()` passes
 when the class name resolves the table Laravel would derive from it.
+
+### Form requests authorize through a gate
+
+```php
+use Illuminate\Foundation\Http\FormRequest;
+
+arch('every form request authorizes through a gate')
+    ->expect('App')
+    ->classes()
+    ->extending(FormRequest::class)
+    ->toAuthorizeWithGate();
+```
+
+`toAuthorizeWithGate()` passes when `authorize()` calls `Gate::allows()` with a
+string literal. Pass a closure to also pin *which* ability: it receives the
+request's class name and returns the ability it should check, or `null` to
+accept any.
+
+```php
+use Illuminate\Support\Str;
+
+// StoreWidgetRequest must check 'widgets_store'.
+$ability = function (string $request): ?string {
+    if (! preg_match('/^(Index|Show|Store|Update|Destroy)(\w+)Request$/', class_basename($request), $parts)) {
+        return null;
+    }
+
+    return Str::snake(Str::plural($parts[2])).'_'.strtolower($parts[1]);
+};
+
+arch('every form request checks the ability its name implies')
+    ->expect('App\Http\Requests')
+    ->classes()
+    ->extending(FormRequest::class)
+    ->toAuthorizeWithGate($ability);
+```
+
+### Every permission is checked, and every check names a permission
+
+```php
+use App\Models\Permission;
+
+test('permissions and gate checks agree', function () {
+    expect(Permission::pluck('name')->all())
+        ->toMatchGateAbilities([app_path()], alsoChecked: ['viewPulse']);
+});
+```
+
+`toMatchGateAbilities()` reads every `Gate::allows('...')` call in the PHP files
+beneath the directories, outside any `vendor` directory. It fails for a
+permission nothing checks (dead weight) and for a checked ability no permission
+backs (it can never be granted), listing every mismatch at once. Pass abilities
+the source cannot show — names built at runtime, or checked by a package — as
+`$alsoChecked`.
 
 ### Asserting a deliberate decision instead of ignoring it
 
@@ -170,6 +230,22 @@ the check. That is the general form of the `#[Fillable]` caveat below.
 
 - No type guard at all: a trait, interface or enum caught by the selector is
   reported as not implementing `ShouldQueue`. Scope the selector.
+
+### `toAuthorizeWithGate()` and `toMatchGateAbilities()`
+
+- Both read source text, not the AST, and see only `Gate::allows()` called with
+  a string literal. `Gate::denies()`, `Gate::authorize()`, `$user->can()`,
+  policies, `can:` middleware and `@can` are not read, and an ability held in a
+  variable or constant is invisible. Pass anything else that is checked through
+  `$alsoChecked`.
+- Text that merely mentions a `Gate::allows('...')` call with a quoted ability —
+  a comment or docblock — is read as a check.
+- `toAuthorizeWithGate()` reads `authorize()` from the file that declares it, so
+  an inherited `authorize()` is read from the parent. Abstract classes pass
+  without being checked.
+- `toMatchGateAbilities()` scans every `.php` file beneath the directories,
+  which includes Blade views; it skips any path containing a `vendor`
+  directory.
 
 ## Editor and agent support
 

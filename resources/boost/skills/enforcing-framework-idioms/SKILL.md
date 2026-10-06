@@ -1,13 +1,15 @@
 ---
 name: enforcing-framework-idioms
-description: Use when adding or changing a queued job, notification, mailable, or Eloquent model in a project that has dashworthy/pest-plugin-arch-idioms installed — the package ships seven arch expectations that enforce dispatch, table-naming, mass-assignment, channel and mail-template conventions, and this skill explains which verb covers which case and how to scope or exempt one.
+description: Use when adding or changing a queued job, notification, mailable, Eloquent model, form request or permission in a project that has dashworthy/pest-plugin-arch-idioms installed — the package ships nine expectations that enforce dispatch, table-naming, mass-assignment, channel, mail-template and authorization conventions, and this skill explains which verb covers which case and how to scope or exempt one.
 ---
 
 # Enforcing framework idioms with arch expectations
 
 This project has `dashworthy/pest-plugin-arch-idioms` installed. It registers
-seven expectations onto Pest's architecture plugin. They compose with any
-`arch()` chain — there is no separate DSL.
+nine expectations onto Pest's architecture plugin. They compose with any
+`arch()` chain — there is no separate DSL. `toMatchGateAbilities()` is the
+exception: its subject is the list of permission names, not a selection of
+classes.
 
 ## Pick the verb
 
@@ -19,6 +21,8 @@ seven expectations onto Pest's architecture plugin. They compose with any
 | an Eloquent model | `toMatchTableName()` and `toGuardMassAssignment()` |
 | a notification | `toDeclareNotificationChannels()` |
 | a mailable | `toUseMarkdownMailTemplates()` |
+| a form request | `toAuthorizeWithGate()` |
+| a permission, or a new `Gate::allows()` check | `expect($permissionNames)->toMatchGateAbilities($directories)` |
 
 `toBeSync()` exists so a synchronous choice is asserted rather than merely
 absent. Prefer it over silently excluding a class from `toBeQueued()`.
@@ -67,3 +71,13 @@ It reads `getFillable()`/`getGuarded()` from a model built with
 or `#[Guarded([...])]` as a PHP attribute is wrongly reported as unguarded —
 Eloquent only resolves those attributes during construction. Exclude any such
 model with `->ignoring(...)`.
+
+## Where the gate verbs are blind
+
+`toAuthorizeWithGate()` and `toMatchGateAbilities()` read source text for
+`Gate::allows('...')` with a string literal. Any other check — `Gate::denies()`,
+`$user->can()`, a policy, `can:` middleware, an ability held in a variable — is
+invisible. Pass abilities checked those ways to `toMatchGateAbilities()` as
+`$alsoChecked` rather than deleting the permission. `toMatchGateAbilities()`
+is an ordinary expectation, so unlike the arch verbs it lists every mismatch
+in one run.
