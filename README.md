@@ -138,6 +138,30 @@ backs (it can never be granted), listing every mismatch at once. Pass abilities
 the source cannot show — names built at runtime, or checked by a package — as
 `$alsoChecked`.
 
+### Modules keep to their approved directories
+
+```php
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Routing\Controller;
+
+arch('every module keeps to the approved directories')
+    ->expect('App\Domains')
+    ->toUseApprovedDirectories(
+        [
+            'Actions',
+            'Data',
+            'Controllers' => Controller::class,
+            'Enums' => UnitEnum::class,
+            'Models' => Model::class,
+            'Requests' => FormRequest::class,
+            'Resources' => JsonResource::class,
+        ],
+        beneath: 'App\Domains\*\*',
+    );
+```
+
 ### Asserting a deliberate decision instead of ignoring it
 
 A class caught by a selector that is *meant* to break the rule can be carved out

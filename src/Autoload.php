@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Dashworthy\PestPluginArchIdioms\ApprovedDirectoriesInspector;
 use Dashworthy\PestPluginArchIdioms\GateAbilityInspector;
 use Dashworthy\PestPluginArchIdioms\GateAuthorizationInspector;
 use Dashworthy\PestPluginArchIdioms\Rule;
@@ -255,6 +256,18 @@ $fromInspector = static fn (Expectation $expectation, callable $inspect, ?callab
  */
 expect()->extend('toAuthorizeWithGate', function (?Closure $expectedAbility = null) use ($fromInspector, $methodOrClassLine): ArchExpectation {
     return $fromInspector($this, new GateAuthorizationInspector($expectedAbility), $methodOrClassLine('function authorize'));
+});
+
+/*
+ | $directories: the approved names for the directories directly beneath
+ |               $beneath. A name given as a key, such as
+ |               'Grids' => AbstractGrid::class, names the class or interface
+ |               every class in that directory must extend or implement.
+ | $beneath:     the parent namespace, * matching any one segment, such as
+ |               'App\Domains\*\*' for every module two levels beneath App\Domains.
+ */
+expect()->extend('toUseApprovedDirectories', function (array $directories, string $beneath) use ($fromInspector): ArchExpectation {
+    return $fromInspector($this, new ApprovedDirectoriesInspector($directories, $beneath));
 });
 
 /*
