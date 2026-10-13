@@ -23,6 +23,7 @@ classes.
 | a mailable | `toUseMarkdownMailTemplates()` |
 | a form request | `toAuthorizeWithGate()` |
 | a class in a module | `toUseApprovedDirectories($directories, beneath: $modules)` |
+| a class in a module directory with a naming suffix | `toUseDirectorySuffixes($suffixes, beneath: $modules)` |
 | a permission, or a new `Gate::allows()` check | `expect($permissionNames)->toMatchGateAbilities($directories)` |
 
 `toBeSync()` exists so a synchronous choice is asserted rather than merely
@@ -100,3 +101,8 @@ have. Treat that list as the project's approved patterns:
 Never get past the rule by putting the class directly in the module, by
 choosing an approved directory that does not fit or whose type the class
 only pretends to be, or by `->ignoring(...)` it.
+
+Where a `toUseDirectorySuffixes()` rule names a directory's suffix, such as
+`'Actions' => 'Action'`, end every new class in that directory with it, however
+deeply it is nested. A class that fails it is misnamed or misplaced: rename it,
+or move it to the directory for what it is.

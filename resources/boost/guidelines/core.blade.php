@@ -1,10 +1,10 @@
 ## Framework idiom expectations
 
-This project installs `dashworthy/pest-plugin-arch-idioms`, which registers ten
+This project installs `dashworthy/pest-plugin-arch-idioms`, which registers eleven
 Pest expectations: `toBeQueued`, `toBeQueuedAfterCommit`, `toBeSync`,
 `toMatchTableName`, `toGuardMassAssignment`, `toDeclareNotificationChannels`,
-`toUseMarkdownMailTemplates`, `toAuthorizeWithGate`, `toMatchGateAbilities`, and
-`toUseApprovedDirectories`.
+`toUseMarkdownMailTemplates`, `toAuthorizeWithGate`, `toMatchGateAbilities`,
+`toUseApprovedDirectories`, and `toUseDirectorySuffixes`.
 
 - Use them inside an ordinary `arch()` chain. There is no separate DSL. The one
   exception is `toMatchGateAbilities`, which takes a list of permission names.
@@ -19,3 +19,6 @@ Pest expectations: `toBeQueued`, `toBeQueuedAfterCommit`, `toBeSync`,
   the user to approve a new directory, saying why the existing ones do not
   fit. Do not create the directory, add it to the list or exempt the class
   with `->ignoring(...)` until they agree.
+- Where a `toUseDirectorySuffixes()` rule names a directory's suffix, end every
+  new class in that directory with it. Rename the class rather than exempting
+  it.
