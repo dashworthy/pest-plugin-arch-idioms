@@ -1,12 +1,12 @@
 ---
 name: enforcing-framework-idioms
-description: Use when adding or changing a queued job, notification, mailable, Eloquent model, form request or permission in a project that has dashworthy/pest-plugin-arch-idioms installed — the package ships nine expectations that enforce dispatch, table-naming, mass-assignment, channel, mail-template and authorization conventions, and this skill explains which verb covers which case and how to scope or exempt one.
+description: Use when adding or changing a queued job, notification, mailable, Eloquent model, form request, permission or new directory in a project that has dashworthy/pest-plugin-arch-idioms installed — the package ships ten expectations that enforce dispatch, table-naming, mass-assignment, channel, mail-template, authorization and directory conventions, and this skill explains which verb covers which case and how to scope or exempt one.
 ---
 
 # Enforcing framework idioms with arch expectations
 
 This project has `dashworthy/pest-plugin-arch-idioms` installed. It registers
-nine expectations onto Pest's architecture plugin. They compose with any
+ten expectations onto Pest's architecture plugin. They compose with any
 `arch()` chain — there is no separate DSL. `toMatchGateAbilities()` is the
 exception: its subject is the list of permission names, not a selection of
 classes.
@@ -22,6 +22,7 @@ classes.
 | a notification | `toDeclareNotificationChannels()` |
 | a mailable | `toUseMarkdownMailTemplates()` |
 | a form request | `toAuthorizeWithGate()` |
+| a class in a module | `toUseApprovedDirectories($directories, beneath: $modules)` |
 | a permission, or a new `Gate::allows()` check | `expect($permissionNames)->toMatchGateAbilities($directories)` |
 
 `toBeSync()` exists so a synchronous choice is asserted rather than merely
@@ -81,3 +82,21 @@ invisible. Pass abilities checked those ways to `toMatchGateAbilities()` as
 `$alsoChecked` rather than deleting the permission. `toMatchGateAbilities()`
 is an ordinary expectation, so unlike the arch verbs it lists every mismatch
 in one run.
+
+## Approved directories are a decision, not a default
+
+A `toUseApprovedDirectories()` rule lists the only directories a module may
+have. Treat that list as the project's approved patterns:
+
+1. Put a new class in the approved directory that fits it, and follow the
+   classes already there. Where the list names a type for that directory,
+   such as `'Grids' => AbstractGrid::class`, the class must extend or
+   implement it.
+2. If none fits, stop. Ask the user to approve a new directory, name it, and
+   say why no approved directory fits.
+3. Only once they agree, add the name to the list in the same change that
+   first uses it.
+
+Never get past the rule by putting the class directly in the module, by
+choosing an approved directory that does not fit or whose type the class
+only pretends to be, or by `->ignoring(...)` it.
