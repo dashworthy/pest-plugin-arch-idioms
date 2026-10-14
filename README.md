@@ -22,6 +22,7 @@ composer require --dev dashworthy/pest-plugin-arch-idioms
 | `toDeclareNotificationChannels()` | `via()` exists and returns a non-empty channel list |
 | `toUseMarkdownMailTemplates()` | `content()` names a markdown template rather than a plain view |
 | `toAuthorizeWithGate($expectedAbility)` | `authorize()` checks `Gate::allows()` with an ability name — the one `$expectedAbility` derives from the class name, when given |
+| `toUseDirectorySuffixes($suffixes, $beneath)` | a class in a module's directory, however deeply nested, ends in the suffix that directory calls for |
 | `toMatchGateAbilities($directories, $alsoChecked)` | (on a list of permission names) every permission is checked by some `Gate::allows()`, and every checked ability is a permission |
 
 `toMatchGateAbilities()` is the odd one out: it is an ordinary expectation, not an
@@ -161,6 +162,26 @@ arch('every module keeps to the approved directories')
         beneath: 'App\Domains\*\*',
     );
 ```
+
+### Classes are named for their directory
+
+```php
+arch('every class is named for the directory it sits in')
+    ->expect('App\Domains')
+    ->toUseDirectorySuffixes(
+        [
+            'Actions' => 'Action',
+            'Controllers' => 'Controller',
+            'Requests' => 'Request',
+            'Resources' => 'Resource',
+        ],
+        beneath: 'App\Domains\*\*',
+    );
+```
+
+It checks only the directories it lists, and a class nested deeper inside one
+is held to the same suffix. Which directories may exist is left to
+`toUseApprovedDirectories()`.
 
 ### Asserting a deliberate decision instead of ignoring it
 

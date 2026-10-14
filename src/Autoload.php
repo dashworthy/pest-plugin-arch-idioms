@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Dashworthy\PestPluginArchIdioms\ApprovedDirectoriesInspector;
+use Dashworthy\PestPluginArchIdioms\DirectorySuffixesInspector;
 use Dashworthy\PestPluginArchIdioms\GateAbilityInspector;
 use Dashworthy\PestPluginArchIdioms\GateAuthorizationInspector;
 use Dashworthy\PestPluginArchIdioms\Rule;
@@ -268,6 +269,17 @@ expect()->extend('toAuthorizeWithGate', function (?Closure $expectedAbility = nu
  */
 expect()->extend('toUseApprovedDirectories', function (array $directories, string $beneath) use ($fromInspector): ArchExpectation {
     return $fromInspector($this, new ApprovedDirectoriesInspector($directories, $beneath));
+});
+
+/*
+ | $suffixes: the suffix every class in a directory directly beneath $beneath
+ |            ends in, keyed by directory name, such as 'Actions' => 'Action'.
+ |            A directory not listed is not checked.
+ | $beneath:  the parent namespace, * matching any one segment, as for
+ |            toUseApprovedDirectories().
+ */
+expect()->extend('toUseDirectorySuffixes', function (array $suffixes, string $beneath) use ($fromInspector): ArchExpectation {
+    return $fromInspector($this, new DirectorySuffixesInspector($suffixes, $beneath));
 });
 
 /*

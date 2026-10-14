@@ -26,8 +26,7 @@ final readonly class ApprovedDirectoriesInspector
     /** @var array<string, class-string|null> */
     private array $directories;
 
-    /** @var array<int, string> */
-    private array $parent;
+    private ModulePattern $modules;
 
     /**
      * @param  array<int|string, string>  $directories  The approved directory names. A name given as a key names the
@@ -48,7 +47,7 @@ final readonly class ApprovedDirectoriesInspector
         }
 
         $this->directories = $approved;
-        $this->parent = explode('\\', trim($beneath, '\\'));
+        $this->modules = new ModulePattern($beneath);
     }
 
     /**
@@ -56,24 +55,16 @@ final readonly class ApprovedDirectoriesInspector
      */
     public function __invoke(ObjectDescription $object): ?string
     {
-        $segments = explode('\\', $object->name);
-        array_pop($segments);
+        $location = $this->modules->locate($object->name);
 
-        $depth = count($this->parent);
-
-        if (count($segments) < $depth) {
+        if ($location === null) {
             return null;
         }
 
-        foreach ($this->parent as $index => $pattern) {
-            if ($pattern !== '*' && $pattern !== $segments[$index]) {
-                return null;
-            }
-        }
+        $parent = $location['module'];
+        $directory = $location['directory'];
 
-        $parent = implode('\\', array_slice($segments, 0, $depth));
-
-        if (count($segments) === $depth) {
+        if ($directory === null) {
             return sprintf(
                 'Expecting the class to sit in an approved directory of %s, but it sits directly in %s. Use one of: %s. %s',
                 $parent,
@@ -82,8 +73,6 @@ final readonly class ApprovedDirectoriesInspector
                 self::APPROVAL,
             );
         }
-
-        $directory = $segments[$depth];
 
         if (! array_key_exists($directory, $this->directories)) {
             return sprintf(
