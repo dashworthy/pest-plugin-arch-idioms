@@ -1,6 +1,7 @@
 <?php
 
 use Dashworthy\PestPluginArchIdioms\Tests\Fixtures\Domains\Action;
+use Dashworthy\PestPluginArchIdioms\Tests\Fixtures\Domains\Billing\Invoices\Actions\Drafts\SaveDraft;
 use Dashworthy\PestPluginArchIdioms\Tests\Fixtures\Domains\Billing\Invoices\Actions\InvoiceTotals;
 use Dashworthy\PestPluginArchIdioms\Tests\Fixtures\Domains\Billing\Invoices\Actions\IssueInvoice;
 use Dashworthy\PestPluginArchIdioms\Tests\Fixtures\Domains\Billing\Invoices\Gizmos\InvoiceGizmo;
@@ -65,5 +66,24 @@ describe('toUseApprovedDirectories', function () {
 
         expect($captured)->not->toBeNull()
             ->and($captured->toCollisionEditor()->getLine())->toBe(5);
+    });
+});
+
+describe('toUseDirectorySuffixes', function () {
+    it('accepts a class that ends in its directory\'s suffix', function () {
+        expect(IssueInvoice::class)->toUseDirectorySuffixes(['Actions' => 'Invoice'], beneath: FIXTURE_MODULES);
+    });
+
+    it('accepts a whole namespace once the classes that break the rule are ignored', function () {
+        expect('Dashworthy\PestPluginArchIdioms\Tests\Fixtures\Domains')
+            ->toUseDirectorySuffixes(['Actions' => 'Invoice', 'Enums' => 'Status'], beneath: FIXTURE_MODULES)
+            ->ignoring([InvoiceTotals::class, SaveDraft::class]);
+    });
+
+    it('rejects a class that does not end in its directory\'s suffix, and names the suffix', function () {
+        expect(fn () => expect(InvoiceTotals::class)
+            ->toUseDirectorySuffixes(['Actions' => 'Invoice'], beneath: FIXTURE_MODULES)
+            ->ensureLazyExpectationIsVerified())
+            ->toThrow(AssertionFailedError::class, "Expecting every class in the Actions directory to end in 'Invoice', but InvoiceTotals does not.");
     });
 });
