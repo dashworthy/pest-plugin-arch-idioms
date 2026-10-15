@@ -263,7 +263,10 @@ expect()->extend('toAuthorizeWithGate', function (?Closure $expectedAbility = nu
  | $directories: the approved names for the directories directly beneath
  |               $beneath. A name given as a key, such as
  |               'Grids' => AbstractGrid::class, names the class or interface
- |               every class in that directory must extend or implement.
+ |               every class in that directory must extend or implement. The
+ |               value may instead be a Closure(class-string $class): bool|string
+ |               given each class there, returning true to accept it, or false
+ |               or the reason to reject it.
  | $beneath:     the parent namespace, * matching any one segment, such as
  |               'App\Domains\*\*' for every module two levels beneath App\Domains.
  */
