@@ -92,7 +92,7 @@ have. Treat that list as the project's approved patterns:
 1. Put a new class in the approved directory that fits it, and follow the
    classes already there. Where the list names a type for that directory,
    such as `'Grids' => AbstractGrid::class`, the class must extend or
-   implement it.
+   implement it. Where it names a closure, the class must pass it.
 2. If none fits, stop. Ask the user to approve a new directory, name it, and
    say why no approved directory fits.
 3. Only once they agree, add the name to the list in the same change that
@@ -100,7 +100,8 @@ have. Treat that list as the project's approved patterns:
 
 Never get past the rule by putting the class directly in the module, by
 choosing an approved directory that does not fit or whose type the class
-only pretends to be, or by `->ignoring(...)` it.
+only pretends to be, by widening a directory's closure to let it through, or
+by `->ignoring(...)` it.
 
 Where a `toUseDirectorySuffixes()` rule names a directory's suffix, such as
 `'Actions' => 'Action'`, end every new class in that directory with it, however
