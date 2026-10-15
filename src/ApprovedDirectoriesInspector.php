@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dashworthy\PestPluginArchIdioms;
 
+use Closure;
 use PHPUnit\Architecture\Elements\ObjectDescription;
 
 /**
@@ -13,8 +14,8 @@ use PHPUnit\Architecture\Elements\ObjectDescription;
  *
  * The parent is a namespace pattern in which * matches any one segment, so 'App\Domains\*\*' names every module two
  * levels beneath App\Domains. Only the directory directly beneath the parent is approved or not; a directory may also
- * name the class or interface everything inside it, however deeply nested, must extend or implement. A class outside
- * the parent is not this rule's concern.
+ * name the class or interface everything inside it, however deeply nested, must extend or implement, or a closure
+ * that checks each class there itself. A class outside the parent is not this rule's concern.
  */
 final readonly class ApprovedDirectoriesInspector
 {
@@ -23,14 +24,16 @@ final readonly class ApprovedDirectoriesInspector
      */
     public const string APPROVAL = 'If none fits, ask for approval before creating a new directory or adding one to the approved list.';
 
-    /** @var array<string, class-string|null> */
+    /** @var array<string, class-string|Closure(class-string): (bool|string)|null> */
     private array $directories;
 
     private ModulePattern $modules;
 
     /**
-     * @param  array<int|string, string>  $directories  The approved directory names. A name given as a key names the
-     *                                                  class or interface every class in that directory must be.
+     * A name given as a key names the class or interface every class in that directory must be, or a closure that is
+     * given each class's name there and returns true to accept it, or false or the reason to reject it.
+     *
+     * @param  array<int|string, string|Closure(class-string): (bool|string)>  $directories  The approved directory names.
      * @param  string  $beneath  The parent namespace, * matching any one segment.
      */
     public function __construct(array $directories, string $beneath)
@@ -39,9 +42,10 @@ final readonly class ApprovedDirectoriesInspector
 
         foreach ($directories as $key => $value) {
             if (is_string($key)) {
-                /** @var class-string $value */
+                /** @var class-string|Closure(class-string): (bool|string) $value */
                 $approved[$key] = $value;
             } else {
+                /** @var string $value */
                 $approved[$value] = null;
             }
         }
@@ -86,6 +90,10 @@ final readonly class ApprovedDirectoriesInspector
 
         $type = $this->directories[$directory];
 
+        if ($type instanceof Closure) {
+            return $this->check($type, $object->name, $directory);
+        }
+
         if ($type !== null && ! is_a($object->name, $type, true)) {
             return sprintf(
                 'Expecting every class in the %s directory to be a %s, but this one is not. Extend or implement %s, or move the class to the approved directory for what it is. %s',
@@ -97,6 +105,28 @@ final readonly class ApprovedDirectoriesInspector
         }
 
         return null;
+    }
+
+    /**
+     * Anything but true rejects the class, so a closure that forgets to return fails rather than passes.
+     *
+     * @param  Closure(class-string): (bool|string)  $check
+     * @param  class-string  $class
+     */
+    private function check(Closure $check, string $class, string $directory): ?string
+    {
+        $result = $check($class);
+
+        if ($result === true) {
+            return null;
+        }
+
+        return sprintf(
+            'Expecting every class in the %s directory to pass the check its approved directory names, but this one does not%s. Change the class to pass it, or move the class to the approved directory for what it is. %s',
+            $directory,
+            is_string($result) ? ': '.rtrim($result, '.') : '',
+            self::APPROVAL,
+        );
     }
 
     private function approved(): string

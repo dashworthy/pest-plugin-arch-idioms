@@ -46,6 +46,22 @@ describe('toUseApprovedDirectories', function () {
             ->toThrow(AssertionFailedError::class, 'Expecting every class in the Actions directory to be a '.Action::class);
     });
 
+    it('accepts every class its directory\'s closure accepts', function () {
+        expect('Dashworthy\PestPluginArchIdioms\Tests\Fixtures\Domains')
+            ->toUseApprovedDirectories([
+                'Actions' => fn (string $class): bool => is_a($class, Action::class, true) || $class === InvoiceTotals::class,
+                'Enums' => UnitEnum::class,
+            ], beneath: FIXTURE_MODULES)
+            ->ignoring([InvoiceGizmo::class, InvoiceHelper::class]);
+    });
+
+    it('rejects a class its directory\'s closure rejects, with the reason it gives', function () {
+        expect(fn () => expect(InvoiceTotals::class)
+            ->toUseApprovedDirectories(['Actions' => fn (string $class): bool|string => is_a($class, Action::class, true) ?: 'it is not an Action.'], beneath: FIXTURE_MODULES)
+            ->ensureLazyExpectationIsVerified())
+            ->toThrow(AssertionFailedError::class, 'Expecting every class in the Actions directory to pass the check its approved directory names, but this one does not: it is not an Action.');
+    });
+
     it('rejects a class sitting directly in a module', function () {
         expect(fn () => expect(InvoiceHelper::class)
             ->toUseApprovedDirectories(['Actions', 'Enums'], beneath: FIXTURE_MODULES)

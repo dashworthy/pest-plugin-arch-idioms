@@ -142,16 +142,19 @@ the source cannot show — names built at runtime, or checked by a package — a
 ### Modules keep to their approved directories
 
 ```php
+use App\Actions\Action;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Routing\Controller;
+use Laravel\Fortify\Contracts\ResetsUserPasswords;
 
 arch('every module keeps to the approved directories')
     ->expect('App\Domains')
     ->toUseApprovedDirectories(
         [
-            'Actions',
+            'Actions' => fn (string $class): bool => is_a($class, Action::class, true)
+                || is_a($class, ResetsUserPasswords::class, true),
             'Data',
             'Controllers' => Controller::class,
             'Enums' => UnitEnum::class,
@@ -162,6 +165,11 @@ arch('every module keeps to the approved directories')
         beneath: 'App\Domains\*\*',
     );
 ```
+
+A directory keyed to a class or interface holds only classes that extend or
+implement it. Where one type is not enough, key it to a closure instead: it is
+given each class's name and returns `true` to accept it, or `false` or the
+reason to reject it.
 
 ### Classes are named for their directory
 

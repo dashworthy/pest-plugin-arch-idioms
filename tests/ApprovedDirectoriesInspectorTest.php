@@ -66,3 +66,50 @@ it('accepts any class in a directory that names no type', function () {
 
     expect($inspect(objectDescription(InvoiceTotals::class)))->toBeNull();
 });
+
+it('passes a class its directory\'s closure accepts', function () {
+    $inspect = new ApprovedDirectoriesInspector(['Actions' => fn (string $class): bool => is_a($class, Action::class, true)], 'Dashworthy\PestPluginArchIdioms\Tests\Fixtures\Domains\*\*');
+
+    expect($inspect(objectDescription(IssueInvoice::class)))->toBeNull()
+        ->and($inspect(objectDescription(SaveDraft::class)))->toBeNull();
+});
+
+it('hands the closure the class name', function () {
+    $seen = [];
+    $inspect = new ApprovedDirectoriesInspector(['Actions' => function (string $class) use (&$seen): bool {
+        $seen[] = $class;
+
+        return true;
+    }], 'Dashworthy\PestPluginArchIdioms\Tests\Fixtures\Domains\*\*');
+
+    $inspect(objectDescription(IssueInvoice::class));
+
+    expect($seen)->toBe([IssueInvoice::class]);
+});
+
+it('reports a class its directory\'s closure rejects', function () {
+    $inspect = new ApprovedDirectoriesInspector(['Actions' => fn (string $class): bool => false], 'Dashworthy\PestPluginArchIdioms\Tests\Fixtures\Domains\*\*');
+
+    expect($inspect(objectDescription(InvoiceTotals::class)))
+        ->toBe('Expecting every class in the Actions directory to pass the check its approved directory names, but this one does not. Change the class to pass it, or move the class to the approved directory for what it is. If none fits, ask for approval before creating a new directory or adding one to the approved list.');
+});
+
+it('reports the reason a closure gives for rejecting a class', function () {
+    $inspect = new ApprovedDirectoriesInspector(['Actions' => fn (string $class): bool|string => 'it neither extends Action nor records activity.'], 'Dashworthy\PestPluginArchIdioms\Tests\Fixtures\Domains\*\*');
+
+    expect($inspect(objectDescription(InvoiceTotals::class)))
+        ->toBe('Expecting every class in the Actions directory to pass the check its approved directory names, but this one does not: it neither extends Action nor records activity. Change the class to pass it, or move the class to the approved directory for what it is. If none fits, ask for approval before creating a new directory or adding one to the approved list.');
+});
+
+it('reports a class when the closure returns anything but true or a reason', function () {
+    $inspect = new ApprovedDirectoriesInspector(['Actions' => fn (string $class) => null], 'Dashworthy\PestPluginArchIdioms\Tests\Fixtures\Domains\*\*');
+
+    expect($inspect(objectDescription(IssueInvoice::class)))
+        ->toStartWith('Expecting every class in the Actions directory to pass the check its approved directory names, but this one does not.');
+});
+
+it('runs no closure for a class outside the directory it is keyed to', function () {
+    $inspect = new ApprovedDirectoriesInspector(['Actions', 'Enums' => fn (string $class): bool => throw new LogicException('Not for this directory.')], 'Dashworthy\PestPluginArchIdioms\Tests\Fixtures\Domains\*\*');
+
+    expect($inspect(objectDescription(IssueInvoice::class)))->toBeNull();
+});
